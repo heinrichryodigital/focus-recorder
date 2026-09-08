@@ -16,8 +16,8 @@ The Vercel CLI link is stored in ignored `.vercel/`. GitHub credentials are not 
 
 ## Release checklist
 
-- Keep desktop source and pre-release installers in the private repository.
-- Notarize macOS installers and Authenticode-sign Windows installers before public distribution.
+- Keep desktop source and the license issuer in the private repository; upload only reviewed compiled installers as public preview release assets.
+- Clearly disclose development-signed/unnotarized macOS and unsigned Windows preview status. Obtain Developer ID notarization and Windows Authenticode signing before a normal commercial release.
 - Complete real-device Windows recording, microphone, mixed-DPI, and installer QA.
 - Implement private server-side entitlement fulfillment and verified provider webhooks before accepting real payments.
 - Publish final prices and customer policies when the product is ready for paid availability.
