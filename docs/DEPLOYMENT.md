@@ -2,6 +2,10 @@
 
 Vercel project: `focus-recorder`, account scope: `mrheinrichhs-projects`.
 
+Current website: https://focus-recorder.vercel.app. The first CLI deployment was automatically assigned Vercel's production domain. No custom domain has been purchased or configured.
+
+Deployments currently use the authenticated Vercel CLI. Automatic Git deployment is not connected: the Vercel GitHub integration cannot access the separate `heinrichryodigital` account's repository. Repository pushes still work normally through GitHub CLI. Connect the intended GitHub account in Vercel to enable automatic deployments later.
+
 The project contains only the public Next.js website, product docs, and checkout simulation. No license issuer, desktop source, or signing key may be uploaded. No external payment credentials are required.
 
 ## Preview

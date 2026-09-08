@@ -1,5 +1,7 @@
 # Focus Recorder · public website
 
+Website: [focus-recorder.vercel.app](https://focus-recorder.vercel.app).
+
 The official Focus Recorder website, built with Next.js and TypeScript. This is deliberately a limited public repository: the desktop recording engine, license issuer, signing material, and release pipelines belong in the private `focus-recorder-core` repository.
 
 ## Source boundary
@@ -19,3 +21,5 @@ Use Node 22 or newer. Run `npm ci`, then `npm run dev`. Visit http://localhost:3
 `npm run build` builds the production website. `npm run typecheck` validates TypeScript; `npm run check:public` validates tracked publication content. No external service credentials are needed for the public website or payment simulation.
 
 The animated homepage demonstration is an interactive illustration, not footage from the app. Download pages distinguish existing local macOS builds from public installer availability and the Windows preview.
+
+See [release status](docs/RELEASE_STATUS.md) for verified platform capabilities and remaining distribution work. Features are committed and pushed independently; the desktop repository is never included in a public website push.
