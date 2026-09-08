@@ -6,6 +6,16 @@ import { dirname, join, resolve } from 'node:path';
 import test from 'node:test';
 
 const guard = resolve('scripts/check-public.mjs');
+const safeEnvironmentExample = [
+  '# Local mock configuration; keep credentials empty.',
+  'PAYMENTS_MODE=mock',
+  'PAYPAL_ENV=sandbox',
+  'PAYPAL_CLIENT_ID=',
+  'PAYPAL_CLIENT_SECRET=',
+  'PAYPAL_WEBHOOK_ID=',
+  'APP_URL=http://localhost:3000',
+  '',
+].join('\n');
 
 function repository(run: (root: string) => void) {
   const root = mkdtempSync(join(tmpdir(), 'focus-public-boundary-'));
@@ -77,3 +87,44 @@ test('publication guard rejects desktop sources, credentials, symlinks and overs
     assert.match(result.stderr, /Symlink/);
   });
 });
+
+test('publication guard allows only the complete blank mock environment template', () => repository(root => {
+  stage(root, '.env.example', safeEnvironmentExample);
+  assert.equal(inspect(root).status, 0);
+}));
+
+test('publication guard rejects opaque PayPal credentials without disclosing their values', () => {
+  const fakeCredential = 'opaque-demo-credential-do-not-use-483920';
+  for (const key of ['PAYPAL_CLIENT_ID', 'PAYPAL_CLIENT_SECRET', 'PAYPAL_WEBHOOK_ID']) {
+    repository(root => {
+      stage(root, '.env.example', safeEnvironmentExample.replace(`${key}=`, `${key}=${fakeCredential}`));
+      const result = inspect(root);
+      assert.equal(result.status, 1, key);
+      assert.match(result.stderr, /Unsafe environment template value/);
+      assert.equal(result.stderr.includes(fakeCredential), false, 'diagnostics must not print credential values');
+    });
+  }
+});
+
+test('publication guard rejects unknown, duplicate, missing, or live environment settings', () => {
+  for (const contents of [
+    `${safeEnvironmentExample}PAYPAL_ACCESS_TOKEN=not-a-real-token\n`,
+    `${safeEnvironmentExample}PAYPAL_CLIENT_SECRET=\n`,
+    safeEnvironmentExample.replace('PAYPAL_CLIENT_SECRET=\n', ''),
+    safeEnvironmentExample.replace('PAYPAL_ENV=sandbox', 'PAYPAL_ENV=live'),
+    safeEnvironmentExample.replace('PAYMENTS_MODE=mock', 'PAYMENTS_MODE=live'),
+    safeEnvironmentExample.replace('APP_URL=http://localhost:3000', 'APP_URL=https://user:password@example.com'),
+    safeEnvironmentExample.replace('PAYPAL_CLIENT_SECRET=', 'export PAYPAL_CLIENT_SECRET='),
+  ]) repository(root => {
+    stage(root, '.env.example', contents);
+    assert.equal(inspect(root).status, 1);
+  });
+});
+
+test('publication guard inspects staged environment values despite a safe working copy', () => repository(root => {
+  stage(root, '.env.example', safeEnvironmentExample.replace('PAYPAL_CLIENT_SECRET=', 'PAYPAL_CLIENT_SECRET=opaque-test-only-value'));
+  writeFileSync(join(root, '.env.example'), safeEnvironmentExample);
+  const result = inspect(root);
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /PAYPAL_CLIENT_SECRET/);
+}));

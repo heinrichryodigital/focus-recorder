@@ -5,6 +5,40 @@ const allowedRoot = new Set(['.gitignore', '.vercelignore', '.env.example', 'REA
 const allowedDirs = ['src/', 'public/', 'docs/', 'scripts/', 'tests/', '.github/'];
 const forbidden = /(?:^|\/)(?:Sources|windows|licensing|node_modules|\.next|\.vercel|graphify-out)(?:\/|$)|\.(?:pem|key|p12|pfx|license|frlicense|mov|mp4|zip|exe|dmg|msi|swift)$/i;
 const secrets = [/-----BEGIN (?:RSA |EC |OPENSSH |ENCRYPTED |)PRIVATE KEY-----/, /\b(?:(?:sk|rk)_(?:live|test)|whsec)_[A-Za-z0-9]{16,}\b/, /\bgh[pousr]_[A-Za-z0-9]{30,}\b/, /\bgithub_pat_[A-Za-z0-9_]{40,}\b/];
+// This template is the only environment file allowed into the public repository.
+// Opaque PayPal credentials have no reliable token prefix, so permit only these
+// exact safe settings and require all credential fields to be empty.
+const exampleSettings = new Map([
+  ['PAYMENTS_MODE', 'mock'],
+  ['PAYPAL_ENV', 'sandbox'],
+  ['PAYPAL_CLIENT_ID', ''],
+  ['PAYPAL_CLIENT_SECRET', ''],
+  ['PAYPAL_WEBHOOK_ID', ''],
+  ['APP_URL', 'http://localhost:3000'],
+]);
+function validateEnvironmentExample(contents) {
+  const issues = [];
+  const seen = new Set();
+  for (const [index, rawLine] of contents.split(/\r?\n/).entries()) {
+    const line = rawLine.trim();
+    if (!line || line.startsWith('#')) continue;
+    const assignment = /^([A-Z][A-Z0-9_]*)=(.*)$/.exec(line);
+    if (!assignment || !exampleSettings.has(assignment[1])) {
+      issues.push(`Unapproved environment template setting at line ${index + 1}`);
+      continue;
+    }
+    const [, key, rawValue] = assignment;
+    if (seen.has(key)) issues.push(`Duplicate environment template setting: ${key}`);
+    seen.add(key);
+    if (rawValue.trim() !== exampleSettings.get(key)) {
+      issues.push(`Unsafe environment template value: ${key} (use the approved non-secret default)`);
+    }
+  }
+  for (const key of exampleSettings.keys()) {
+    if (!seen.has(key)) issues.push(`Missing environment template setting: ${key}`);
+  }
+  return issues;
+}
 const gitRoot = execFileSync('git', ['rev-parse', '--show-toplevel'], { encoding: 'utf8' }).trim();
 if (realpathSync(gitRoot) !== realpathSync(process.cwd())) {
   console.error('Run the publication check from the dedicated public repository root, not an enclosing repository.');
@@ -34,6 +68,7 @@ for (const entry of entries) {
   }
   const bytes = execFileSync('git', ['cat-file', 'blob', objectId], { maxBuffer: 1_000_001 });
   if (secrets.some(pattern => pattern.test(bytes.toString('utf8')))) errors.push(`Possible credential: ${file}`);
+  if (file === '.env.example') errors.push(...validateEnvironmentExample(bytes.toString('utf8')));
 }
 if (errors.length) { console.error(errors.join('\n')); process.exit(1); }
 console.log(`Public source boundary checked: ${entries.length} staged/tracked files; no desktop source or common credentials.`);
