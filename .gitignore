@@ -18,3 +18,4 @@ output/
 *.zip
 .DS_Store
 *.tsbuildinfo
+.vercel
