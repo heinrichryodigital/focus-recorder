@@ -13,6 +13,23 @@ This is a **local simulation**, not a live integration or either provider's sand
 
 No payment keys or environment variables are needed.
 
+## PayPal configuration location
+
+Local credentials go in the ignored `.env.local` file at this website's root, alongside `package.json`. An empty `.env.example` documents the names without containing credentials. `.vercelignore` excludes local environment files from deployment uploads.
+
+```dotenv
+PAYMENTS_MODE=mock
+PAYPAL_ENV=sandbox
+PAYPAL_CLIENT_ID=
+PAYPAL_CLIENT_SECRET=
+PAYPAL_WEBHOOK_ID=
+APP_URL=http://localhost:3000
+```
+
+Use credentials from the same PayPal environment selected by `PAYPAL_ENV`. Set the webhook ID after creating the corresponding webhook. These are reserved server-side configuration names: adding them does not turn the current simulation into a real payment integration. Never use `NEXT_PUBLIC_` for the client secret or put secrets in `next.config.ts`.
+
+For hosted configuration, enter the same names under the Focus Recorder Vercel project's Settings → Environment Variables. Configure production and preview separately; set `APP_URL` to the correct deployed origin. Do not upload `.env.local` or paste credentials in repository files or chat.
+
 ## API boundary
 
 `POST /api/mock-checkout` accepts exactly `{"plan":"pro","provider":"stripe","outcome":"success"}` with `Content-Type: application/json`. Outcomes also include `declined` and `cancelled`.

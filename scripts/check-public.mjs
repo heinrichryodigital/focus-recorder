@@ -1,7 +1,7 @@
 import { execFileSync } from 'node:child_process';
 import { realpathSync } from 'node:fs';
 
-const allowedRoot = new Set(['.gitignore', '.env.example', 'README.md', 'SECURITY.md', 'AGENTS.md', 'CLAUDE.md', 'package.json', 'package-lock.json', 'next.config.ts', 'next-env.d.ts', 'tsconfig.json', 'eslint.config.mjs', 'vercel.json']);
+const allowedRoot = new Set(['.gitignore', '.vercelignore', '.env.example', 'README.md', 'SECURITY.md', 'AGENTS.md', 'CLAUDE.md', 'package.json', 'package-lock.json', 'next.config.ts', 'next-env.d.ts', 'tsconfig.json', 'eslint.config.mjs', 'vercel.json']);
 const allowedDirs = ['src/', 'public/', 'docs/', 'scripts/', 'tests/', '.github/'];
 const forbidden = /(?:^|\/)(?:Sources|windows|licensing|node_modules|\.next|\.vercel|graphify-out)(?:\/|$)|\.(?:pem|key|p12|pfx|license|frlicense|mov|mp4|zip|exe|dmg|msi|swift)$/i;
 const secrets = [/-----BEGIN (?:RSA |EC |OPENSSH |ENCRYPTED |)PRIVATE KEY-----/, /\b(?:(?:sk|rk)_(?:live|test)|whsec)_[A-Za-z0-9]{16,}\b/, /\bgh[pousr]_[A-Za-z0-9]{30,}\b/, /\bgithub_pat_[A-Za-z0-9_]{40,}\b/];
