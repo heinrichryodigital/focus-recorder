@@ -1,0 +1,16 @@
+{
+  "name": "focus-recorder-website",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "typecheck": "tsc --noEmit",
+    "test": "node --import tsx --test tests/*.test.ts",
+    "check:public": "node scripts/check-public.mjs"
+  },
+  "dependencies": { "next": "16.3.4", "react": "19.2.8", "react-dom": "19.2.8", "lucide-react": "1.43.0" },
+  "devDependencies": { "typescript": "~5.9.3", "@types/node": "^22.19.0", "@types/react": "^19.2.0", "@types/react-dom": "^19.2.0", "tsx": "^4.21.0" },
+  "engines": { "node": ">=22.0.0" }
+}
