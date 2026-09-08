@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { ArrowUpRight } from "lucide-react";
+import { ApplePlatformIcon, WindowsPlatformIcon } from "@/components/platform-icons";
 import CheckoutFrame from "./checkout-frame";
 import { checkoutRequest, isDeviceId, parseCheckoutConfig, parseCheckoutRedirect, type CheckoutConfig } from "./checkout-client";
 
@@ -69,7 +70,7 @@ export default function Checkout({ cancelled }: { cancelled: boolean }) {
       <fieldset className="checkout-fieldset" disabled={submitting || checking || !config?.enabled}>
         <legend>Your computer</legend>
         <div className="checkout-platforms">
-          {(["macos", "windows"] as const).map(value => <label className={`checkout-plan${platform === value ? " is-selected" : ""}`} key={value}><input type="radio" name="platform" value={value} checked={platform === value} onChange={() => setPlatform(value)} /><span>{value === "macos" ? "macOS" : "Windows"}</span></label>)}
+          {(["macos", "windows"] as const).map(value => <label className={`checkout-plan${platform === value ? " is-selected" : ""}`} key={value}><input type="radio" name="platform" value={value} checked={platform === value} onChange={() => setPlatform(value)} /><span>{value === "macos" ? <ApplePlatformIcon size={16} /> : <WindowsPlatformIcon size={16} />} {value === "macos" ? "macOS" : "Windows"}</span></label>)}
         </div>
         <label className="checkout-input-label" htmlFor="device-id">Device ID <span>(required)</span></label>
         <input className="checkout-device-input" ref={deviceInput} id="device-id" name="machineId" type="text" value={machineId} maxLength={128} autoComplete="off" autoCapitalize="none" spellCheck={false} aria-describedby={`device-help${deviceError ? " device-error" : ""}`} aria-invalid={Boolean(deviceError)} onChange={event => { setMachineId(event.target.value); if (isDeviceId(event.target.value.trim())) setDeviceError(""); }} />
