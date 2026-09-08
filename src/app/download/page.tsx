@@ -23,6 +23,6 @@ export default function Download() {
         <Link className="text-link" href="/guide#windows">Windows quick start <ArrowUpRight size={15}/></Link>
       </article>
     </div>
-    <p className="release-note">Free use has no time limit. Higher-quality options are marked Pro inside the app. PayPal and Stripe checkout are still demonstrations: they do not charge money or issue an activation license. <a href="https://github.com/heinrichryodigital/focus-recorder/releases/tag/v0.3.0-free-preview">Release notes and file checksums</a>.</p>
+    <p className="release-note">Free use has no time limit. Higher-quality options are marked Pro inside the app. <Link href="/checkout">Focus Pro is $9 USD per month</Link> for one device when checkout is available, with automatic renewal until cancelled in PayPal. Connect at least every three days to renew paid access. Try this preview on your device before subscribing. <a href="https://github.com/heinrichryodigital/focus-recorder/releases/tag/v0.3.0-free-preview">Release notes and file checksums</a>.</p>
   </main><Footer/></>;
 }
