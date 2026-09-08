@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 
 const allowedRoot = new Set(['.gitignore', '.env.example', 'README.md', 'SECURITY.md', 'package.json', 'package-lock.json', 'next.config.ts', 'next-env.d.ts', 'tsconfig.json', 'eslint.config.mjs', 'vercel.json']);
 const allowedDirs = ['src/', 'public/', 'docs/', 'scripts/', 'tests/', '.github/'];
-const forbidden = /(?:^|\/)(?:Sources|windows|licensing|node_modules|\.next|\.vercel|graphify-out)(?:\/|$)|\.(?:pem|key|p12|pfx|license|mov|mp4|zip|exe|dmg|msi|swift)$/i;
+const forbidden = /(?:^|\/)(?:Sources|windows|licensing|node_modules|\.next|\.vercel|graphify-out)(?:\/|$)|\.(?:pem|key|p12|pfx|license|frlicense|mov|mp4|zip|exe|dmg|msi|swift)$/i;
 const secrets = [/-----BEGIN (?:RSA |EC |OPENSSH |)PRIVATE KEY-----/, /\b(?:sk_live|rk_live|whsec)_[A-Za-z0-9]{16,}\b/, /\bgh[pousr]_[A-Za-z0-9]{30,}\b/];
 const files = execFileSync('git', ['ls-files', '-z'], { encoding: 'utf8' }).split('\0').filter(Boolean);
 const errors = [];

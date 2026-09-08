@@ -11,6 +11,7 @@ output/
 *.p12
 *.mobileprovision
 *.license
+*.frlicense
 *.mov
 *.mp4
 *.app/
