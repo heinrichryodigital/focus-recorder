@@ -137,3 +137,51 @@
   .checkout-outcome { gap: 5px; padding-inline: 5px; }
 }
 @media (prefers-reduced-motion: reduce) { .checkout-shell *, .checkout-shell *::before, .checkout-shell *::after { transition: none !important; animation: none !important; } }
+
+/* Subscription and activation pages use the established checkout palette. */
+.checkout-live .checkout-banner, .checkout-live .checkout-eyebrow { font-size: 12px; }
+.checkout-live .checkout-panel-heading p { font-size: 15px; line-height: 1.6; }
+.checkout-live .checkout-grid > * { min-width: 0; }
+.checkout-benefits { padding: 0; margin: 25px 0; list-style: none; display: grid; gap: 15px; }
+.checkout-benefits li { display: flex; align-items: flex-start; gap: 10px; font-size: 15px; line-height: 1.5; }
+.checkout-benefits svg { flex-shrink: 0; margin-top: 3px; }
+.checkout-info { margin-block: 22px !important; padding: 16px; background: #eeefe5; border: 1px solid var(--checkout-line); border-radius: 9px; font-size: 14px; line-height: 1.65; }
+.checkout-info > p { margin-top: 7px; }
+.checkout-live a:not(.brand):not(.checkout-back) { text-decoration: underline; text-underline-offset: 3px; }
+.checkout-live .checkout-total { margin-top: 25px; padding-block: 22px; border-bottom: 1px dashed var(--checkout-line); }
+.checkout-subscription-total > strong { white-space: nowrap; }
+.checkout-subscription-total > strong > span { font-size: 13px; font-weight: 450; letter-spacing: 0; }
+.checkout-live .checkout-total small { font-size: 12px; line-height: 1.4; }
+.checkout-availability { min-height: 52px; font-size: 14px; line-height: 1.6; }
+.checkout-platforms { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.checkout-platforms .checkout-plan { min-height: 52px; font-size: 15px; }
+.checkout-live .checkout-fieldset legend { font-size: 16px; }
+.checkout-input-label { display: block; margin: 22px 0 10px; font-size: 15px; font-weight: 650; }
+.checkout-input-label > span { color: var(--checkout-muted); font-size: 13px; font-weight: 450; }
+.checkout-device-input, .checkout-token { display: block; width: 100%; border: 1px solid #929687; border-radius: 8px; background: white; color: var(--checkout-ink); padding: 12px; min-height: 48px; font-size: 16px; line-height: 1.5; }
+.checkout-device-input[aria-invalid="true"] { border-color: #982d22; }
+.checkout-help { margin-block: 12px !important; font-size: 13px; line-height: 1.7; color: var(--checkout-muted); }
+.checkout-terms { margin-top: 25px; padding-top: 20px; border-top: 1px solid var(--checkout-line); }
+.checkout-terms h3 { font-size: 16px; margin: 0 0 12px; }
+.checkout-terms p { font-size: 14px; line-height: 1.7; margin-bottom: 12px; color: var(--checkout-muted); }
+.checkout-consent { display: flex; align-items: flex-start; gap: 12px; padding: 16px 0; margin: 8px 0 16px; min-height: 44px; font-size: 14px; line-height: 1.7; }
+.checkout-consent input { margin: 4px 0 0; width: 19px; height: 19px; flex-shrink: 0; accent-color: var(--checkout-ink); }
+.checkout-live .checkout-primary { font-size: 15px; }
+.checkout-live .checkout-primary:disabled { cursor: not-allowed; }
+.checkout-live .checkout-text-button { font-size: 14px; }
+.checkout-live .checkout-fineprint { font-size: 12px; line-height: 1.7; }
+.checkout-live .checkout-error { font-size: 14px; margin-top: 12px !important; }
+.checkout-activation > p, .checkout-confirmation > p { font-size: 15px; line-height: 1.7; margin-block: 20px; }
+.checkout-activation .checkout-result-icon { margin: 25px 0 15px; }
+.checkout-token { resize: vertical; font-family: ui-monospace, monospace; overflow-wrap: anywhere; min-height: 132px; }
+.checkout-token-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
+.checkout-token-actions > button { flex: 1 1 160px; }
+.checkout-secondary { display: inline-flex; justify-content: center; align-items: center; gap: 9px; border: 1px solid var(--checkout-ink); border-radius: 9px; background: transparent; color: var(--checkout-ink); min-height: 50px; padding: 12px; font-size: 14px; transition: background-color 180ms; }
+.checkout-secondary:hover { background: #eeefe5; }
+@media (max-width: 700px) {
+  .checkout-live .checkout-story h1 { font-size: 44px; }
+  .checkout-live .checkout-story > p { font-size: 16px; }
+  .checkout-live .checkout-story .checkout-info { margin-bottom: 0 !important; }
+  .checkout-live .checkout-panel { padding: 23px 20px; }
+  .checkout-subscription-total { align-items: flex-start; flex-direction: column; }
+}

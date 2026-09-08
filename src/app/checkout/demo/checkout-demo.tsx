@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
-import { Brand } from "../../components/chrome";
+import { Brand } from "../../../components/chrome";
 import {
   DEMO_PLANS,
   formatDemoAmount,
@@ -12,7 +12,7 @@ import {
   type DemoProvider,
   type MockCheckoutResult,
   type MockReceipt,
-} from "../../lib/mock-payments";
+} from "../../../lib/mock-payments";
 
 const providerNames = { stripe: "Stripe", paypal: "PayPal" } as const;
 const resultCopy = {
