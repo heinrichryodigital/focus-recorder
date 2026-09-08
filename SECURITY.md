@@ -14,9 +14,9 @@ Public release assets contain compiled desktop applications only, not the privat
 
 ## Payments
 
-The public checkout is a local simulation. It does not contact Stripe or PayPal, process money, collect payment details, or grant a desktop license. A browser success screen or mock receipt is never evidence of payment.
+Production redirects to PayPal for a fixed $9 USD monthly subscription with explicit consent. Its separately deployed private backend verifies payments and webhook authenticity, persists state durably, handles refunds/disputes, and issues device-bound licenses lasting at most three days. Already-issued offline tokens cannot be instantly revoked. Server secrets stay outside source control and client assets.
 
-A future paid launch requires authenticated server-side entitlement storage, verified provider webhooks, idempotent fulfillment, refund/revocation handling, and separately configured live credentials. Those are intentionally not represented as active by this mock.
+The isolated `/checkout/demo` does not contact Stripe or PayPal, process money, collect payment details, or grant licenses. A browser success screen or mock receipt is never evidence of payment. Global request caps limit resource usage but cannot eliminate denial-of-service risk; Free hosting also has availability limits. Cloning this website does not include the private payment backend.
 
 ## Reporting
 
