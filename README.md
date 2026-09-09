@@ -14,6 +14,30 @@ Public visibility is not an open-source license. No license to redistribute the 
 
 See [SECURITY.md](SECURITY.md) for the protection model and its limits.
 
+## User guide
+
+The [recording guide](https://focus-recorder.netlify.app/guide) covers first-time Mac
+and Windows setup, a short practice recording, saved defaults, System/Light/Dark
+appearance, account-based Pro, troubleshooting, and manual updates. Direct links:
+[Mac](https://focus-recorder.netlify.app/guide#mac),
+[Windows](https://focus-recorder.netlify.app/guide#windows),
+[settings](https://focus-recorder.netlify.app/guide#settings), and
+[zoom versus cursor speed](https://focus-recorder.netlify.app/guide#motion).
+
+The guide uses the site's existing brand icons and colors, accessible anchor
+navigation, a platform settings table, and a native expandable practice checklist.
+It is a Server Component with no new client-side state, tracking, external media,
+account calls, or payment behavior. The checklist only marks temporary practice
+steps; it never operates the recorder. Its source is `src/app/guide/page.tsx`, with
+guide-scoped styles in `src/app/globals.css` and checks in `tests/guide.test.ts`.
+
+Keep platform limits and control names aligned with the shipped desktop release.
+Strength means zoom magnification, not cursor speed. Reset preferences restores
+appearance and recording defaults, without signing out, deleting recordings, or
+changing a Pro license or billing. The equivalent offline developer/distribution
+guide is `docs/USER_GUIDE.md` in the private desktop repository. Do not promise
+Windows production validation or an automatic updater without evidence.
+
 ## Develop
 
 Use Node 22 or newer. Run `npm ci`, then `npm run dev`. Visit http://localhost:3000.
