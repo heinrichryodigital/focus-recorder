@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
-  checkoutRequest, isCheckoutId, isDeviceId, parseCheckoutConfig,
+  checkoutRequest, isCheckoutId, parseCheckoutConfig,
   parseCheckoutRedirect, parseCheckoutStatus,
 } from "../src/app/checkout/checkout-client";
 
@@ -31,9 +31,11 @@ test("only the selected PayPal environment and subscription approval route can r
   assert.throws(() => parseCheckoutRedirect({ checkoutId: "unbound", approvalUrl }, "live"));
 });
 
-test("client requires server activation, a bounded FR1 token, and a future expiry in seconds", () => {
+test("client requires server activation, a bounded signed token, and a future expiry in seconds", () => {
   const active = { status: "active", token: ["FR1", "dGVzdA", "c2ln"].join("."), expiresAt: Math.floor(Date.now() / 1000) + 600 };
   assert.deepEqual(parseCheckoutStatus(active), active);
+  const accountActive = { ...active, token: active.token.replace("FR1.", "FR2.") };
+  assert.deepEqual(parseCheckoutStatus(accountActive), accountActive);
   assert.deepEqual(parseCheckoutStatus({ ...active, status: "pending" }), { status: "pending" });
   for (const value of [
     { status: "approved" }, { status: "active" }, { ...active, token: "demo-receipt" },
@@ -43,12 +45,9 @@ test("client requires server activation, a bounded FR1 token, and a future expir
   ]) assert.throws(() => parseCheckoutStatus(value));
 });
 
-test("device and checkout identifiers are distinct, bounded lowercase hashes", () => {
-  assert.equal(isDeviceId("a".repeat(64)), true);
-  assert.equal(isDeviceId("A".repeat(64)), false);
-  assert.equal(isDeviceId("a".repeat(63)), false);
-  assert.equal(isDeviceId("g".repeat(64)), false);
+test("checkout identifiers are bounded lowercase hashes", () => {
   assert.equal(isCheckoutId(checkoutId), true);
+  assert.equal(isCheckoutId("A".repeat(32)), false);
   assert.equal(isCheckoutId("a".repeat(64)), false);
 });
 

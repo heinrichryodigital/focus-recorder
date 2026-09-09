@@ -14,6 +14,9 @@ const safeEnvironmentExample = [
   'PAYPAL_CLIENT_SECRET=',
   'PAYPAL_WEBHOOK_ID=',
   'APP_URL=http://localhost:3000',
+  'ACCOUNT_LOGIN_ENABLED=false',
+  'SUPABASE_URL=',
+  'SUPABASE_PUBLISHABLE_KEY=',
   '',
 ].join('\n');
 
@@ -52,6 +55,24 @@ test('publication guard scans staged bytes even if a secret is hidden by an unst
   assert.equal(result.status, 1);
   assert.match(result.stderr, /Possible credential/);
 }));
+
+test('publication guard rejects Supabase secret keys without printing them', () => repository(root => {
+  const fakeSecret = ['sb', 'secret', 'x'.repeat(32)].join('_');
+  stage(root, 'src/config.ts', `export const key = "${fakeSecret}";`);
+  const result = inspect(root);
+  assert.equal(result.status, 1);
+  assert.equal(result.stderr.includes(fakeSecret), false);
+}));
+
+test('publication guard rejects legacy privileged Supabase JWTs but permits public anon examples', () => {
+  for (const role of ['service_role', 'anon']) repository(root => {
+    const token = [Buffer.from(JSON.stringify({ alg: 'HS256' })).toString('base64url'), Buffer.from(JSON.stringify({ role, iss: 'supabase' })).toString('base64url'), 'syntheticSignature'].join('.');
+    stage(root, 'src/config.ts', `export const key = "${token}";`);
+    const result = inspect(root);
+    assert.equal(result.status, role === 'anon' ? 0 : 1);
+    assert.equal(result.stderr.includes(token), false);
+  });
+});
 
 test('publication guard rejects empty and enclosing repositories', () => repository(root => {
   assert.equal(inspect(root).status, 1);

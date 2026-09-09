@@ -9,7 +9,7 @@ export default function CheckoutFrame({ children, returning = false }: { childre
       <Link className="checkout-back" href="/#pricing"><ArrowLeft size={18} aria-hidden="true" /> Back to plans</Link>
     </nav>
     <div className="checkout-banner"><span className="checkout-status-dot" aria-hidden="true" /> FOCUS PRO
-      <span className="checkout-banner-detail">One device. $9 USD per month.</span>
+      <span className="checkout-banner-detail">Your account. $9 USD per month.</span>
     </div>
     <div className="checkout-grid">
       <aside className="checkout-story">

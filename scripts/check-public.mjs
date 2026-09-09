@@ -5,6 +5,13 @@ const allowedRoot = new Set(['.gitignore', '.vercelignore', '.env.example', 'REA
 const allowedDirs = ['src/', 'public/', 'docs/', 'scripts/', 'tests/', '.github/'];
 const forbidden = /(?:^|\/)(?:Sources|windows|licensing|node_modules|\.next|\.vercel|graphify-out)(?:\/|$)|\.(?:pem|key|p12|pfx|license|frlicense|mov|mp4|zip|exe|dmg|msi|swift)$/i;
 const secrets = [/-----BEGIN (?:RSA |EC |OPENSSH |ENCRYPTED |)PRIVATE KEY-----/, /\b(?:(?:sk|rk)_(?:live|test)|whsec)_[A-Za-z0-9]{16,}\b/, /\bgh[pousr]_[A-Za-z0-9]{30,}\b/, /\bgithub_pat_[A-Za-z0-9_]{40,}\b/];
+secrets.push(/\bsb_secret_[A-Za-z0-9_-]{16,}\b/);
+function containsPrivilegedSupabaseJWT(contents) {
+  return [...contents.matchAll(/\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b/g)].some(([token]) => {
+    try { return JSON.parse(Buffer.from(token.split('.')[1], 'base64url').toString('utf8')).role === 'service_role'; }
+    catch { return false; }
+  });
+}
 // This template is the only environment file allowed into the public repository.
 // Opaque PayPal credentials have no reliable token prefix, so permit only these
 // exact safe settings and require all credential fields to be empty.
@@ -15,6 +22,9 @@ const exampleSettings = new Map([
   ['PAYPAL_CLIENT_SECRET', ''],
   ['PAYPAL_WEBHOOK_ID', ''],
   ['APP_URL', 'http://localhost:3000'],
+  ['ACCOUNT_LOGIN_ENABLED', 'false'],
+  ['SUPABASE_URL', ''],
+  ['SUPABASE_PUBLISHABLE_KEY', ''],
 ]);
 function validateEnvironmentExample(contents) {
   const issues = [];
@@ -67,7 +77,7 @@ for (const entry of entries) {
     continue;
   }
   const bytes = execFileSync('git', ['cat-file', 'blob', objectId], { maxBuffer: 1_000_001 });
-  if (secrets.some(pattern => pattern.test(bytes.toString('utf8')))) errors.push(`Possible credential: ${file}`);
+  if (secrets.some(pattern => pattern.test(bytes.toString('utf8'))) || containsPrivilegedSupabaseJWT(bytes.toString('utf8'))) errors.push(`Possible credential: ${file}`);
   if (file === '.env.example') errors.push(...validateEnvironmentExample(bytes.toString('utf8')));
 }
 if (errors.length) { console.error(errors.join('\n')); process.exit(1); }

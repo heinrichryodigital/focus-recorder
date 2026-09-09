@@ -4,7 +4,7 @@ import "./checkout.css";
 
 export const metadata: Metadata = {
   title: "Focus Pro — $9 USD per month",
-  description: "Subscribe to Focus Pro for one device with PayPal. $9 USD per month, automatically renewed until cancelled.",
+  description: "Subscribe to Focus Pro for your account with PayPal. $9 USD per month, automatically renewed until cancelled.",
   robots: { index: false, follow: true },
   referrer: "no-referrer",
 };

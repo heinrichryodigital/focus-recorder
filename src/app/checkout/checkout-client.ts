@@ -25,7 +25,6 @@ export function parseCheckoutConfig(value: unknown): CheckoutConfig {
   return data as CheckoutConfig;
 }
 
-export function isDeviceId(value: string): boolean { return /^[a-f0-9]{64}$/.test(value); }
 export function isCheckoutId(value: unknown): value is string {
   return typeof value === "string" && /^[a-f0-9]{32}$/.test(value);
 }
@@ -50,7 +49,7 @@ export function parseCheckoutStatus(value: unknown): CheckoutStatus {
     return { status: data.status };
   }
   if (data.status === "active" && typeof data.token === "string" && data.token.length <= 16384
-      && /^FR1\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(data.token)
+      && /^FR[12]\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(data.token)
       && typeof data.expiresAt === "number" && Number.isSafeInteger(data.expiresAt)
       && data.expiresAt * 1000 > Date.now() && data.expiresAt < 100000000000) {
     return { status: "active", token: data.token, expiresAt: data.expiresAt };
@@ -59,10 +58,17 @@ export function parseCheckoutStatus(value: unknown): CheckoutStatus {
 }
 
 export async function checkoutRequest(
-  path: "/api/paypal/config" | "/api/paypal/checkout" | "/api/paypal/status",
+  path: "/api/paypal/config" | "/api/paypal/checkout" | "/api/paypal/status" | "/api/account/config" | "/api/account/entitlement",
   body?: object,
   signal?: AbortSignal,
+  accessToken?: string,
 ): Promise<unknown> {
+  if (!["/api/paypal/config", "/api/paypal/checkout", "/api/paypal/status", "/api/account/config", "/api/account/entitlement"].includes(path)) {
+    throw new Error("Unexpected account destination.");
+  }
+  if (accessToken !== undefined && (!/^[A-Za-z0-9._-]+$/.test(accessToken) || accessToken.length > 16384)) {
+    throw new Error("Please sign in again.");
+  }
   const controller = new AbortController();
   const abort = () => controller.abort();
   signal?.addEventListener("abort", abort, { once: true });
@@ -71,7 +77,8 @@ export async function checkoutRequest(
   try {
     const response = await fetch(path, {
       method: body ? "POST" : "GET",
-      headers: { Accept: "application/json", ...(body ? { "Content-Type": "application/json" } : {}) },
+      headers: { Accept: "application/json", ...(body ? { "Content-Type": "application/json" } : {}),
+        ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}) },
       ...(body ? { body: JSON.stringify(body) } : {}),
       credentials: "same-origin",
       cache: "no-store",
