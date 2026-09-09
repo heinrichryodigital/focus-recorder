@@ -1,6 +1,8 @@
 # Release status · September 9, 2026
 
-Version 0.5.0 adds Firebase account login for Pro, without binding new subscriptions to a computer. No account, payment or activation is required for Free recording. Exports are limited to at most 1080p and 24 fps and include a bouncing watermark for the whole video. The app discloses these limits and marks paid controls Pro. Older device-bound purchases retain their legacy activation option; creating a login does not automatically transfer ownership.
+Version 0.6.0 adds website-matched orange/aperture branding, System/Light/Dark appearance, saved recording preferences with a reset option, and a quick-start tutorial. Settings and appearance are local to each computer; they do not change the recorded display's theme. Existing Firebase account login, PayPal subscriptions, and licensing are unchanged.
+
+No account, payment or activation is required for Free recording. Exports are limited to at most 1080p and 24 fps and include a bouncing watermark for the whole video. The app discloses these limits and marks paid controls Pro. Older device-bound purchases retain their legacy activation option; creating a login does not automatically transfer ownership.
 
 | Component | Capabilities and checks | Remaining limitations |
 | --- | --- | --- |
@@ -14,8 +16,10 @@ Pro costs $9 USD per month for your verified account, renewing automatically unt
 
 The public repository contains checkout UI but not the private backend. `/checkout/demo` remains an isolated no-charge, non-entitling Stripe/PayPal simulation. A browser return or demo receipt never proves payment.
 
-## Account-enabled preview
+## Configurable desktop preview
 
-[Free macOS and Windows downloads](https://github.com/heinrichryodigital/focus-recorder/releases/tag/v0.5.0-firebase-preview) use the account-enabled preview. The release page contains publisher checksums and build notes. Windows output is variable-frame-rate, not guaranteed constant-frame-rate.
+[Free macOS and Windows downloads](https://github.com/heinrichryodigital/focus-recorder/releases/tag/v0.6.0-theme-preview) include the new themes and preferences. The release page contains publisher checksums and build notes. Windows output is variable-frame-rate, not guaranteed constant-frame-rate.
+
+Read the [user guide](https://focus-recorder.netlify.app/guide) for installation, a first recording, zoom strength, saved settings, and troubleshooting. Updates are downloaded manually; this preview does not include an automatic updater.
 
 The current website and payment origin is [focus-recorder.netlify.app](https://focus-recorder.netlify.app). Security warnings may appear for these preview builds; do not disable system security to use them.
