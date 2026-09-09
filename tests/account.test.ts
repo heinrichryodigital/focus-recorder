@@ -152,21 +152,55 @@ test("failed or mismatched session refreshes fail closed", async () => {
 });
 
 test("session snapshots use the same current Firebase user before and after token lookup", async () => {
-  let finish!: (token: string) => void;
+  let finish!: (token: { token: string; claims: { email_verified: boolean } }) => void;
   const user = { uid, email: "person@example.test", emailVerified: true,
-    getIdToken: async () => new Promise<string>(resolve => { finish = resolve; }) };
+    getIdTokenResult: async () => new Promise<{ token: string; claims: { email_verified: boolean } }>(resolve => { finish = resolve; }) };
   const auth = { currentUser: user as typeof user | null };
   const client = { auth, config } as unknown as AccountClient;
   const snapshot = getAccountSession(client);
   auth.currentUser = { ...user, uid: "OtherUser" };
-  finish("example.access.token");
+  finish({ token: "example.access.token", claims: { email_verified: true } });
   await assert.rejects(snapshot, /account changed/);
   auth.currentUser = user;
   const valid = getAccountSession(client);
-  finish("example.access.token");
+  finish({ token: "example.access.token", claims: { email_verified: true } });
   assert.deepEqual(await valid, session());
   auth.currentUser = null;
   assert.equal(await getAccountSession(client), null);
+});
+
+test("verified profile refreshes stale email claims once, including nested token listeners", async () => {
+  for (const providerVerified of [true, false]) {
+    let cached = { token: "old.unverified.token", claims: { email_verified: false } };
+    let forced = 0;
+    let nested: Promise<AccountSession | null> | undefined;
+    let client: AccountClient;
+    const user = { uid, email: "person@example.test", emailVerified: true,
+      getIdTokenResult: async (force = false) => {
+        if (!force) return cached;
+        forced++;
+        cached = { token: "new.refreshed.token", claims: { email_verified: providerVerified } };
+        // Firebase emits onIdTokenChanged before the forced refresh promise settles.
+        nested = getAccountSession(client);
+        await Promise.resolve();
+        return cached;
+      } };
+    client = { auth: { currentUser: user }, config } as unknown as AccountClient;
+    const result = await getAccountSession(client);
+    assert.equal(result?.access_token, "new.refreshed.token");
+    assert.equal(result?.user.emailVerified, providerVerified);
+    assert.equal((await nested)?.user.emailVerified, providerVerified);
+    assert.equal(forced, 1);
+    assert.equal((await getAccountSession(client))?.user.emailVerified, providerVerified);
+    assert.equal(forced, 1, "an unverified result must not cause a listener/refresh loop");
+  }
+});
+
+test("token verification alone never makes an unverified profile eligible for checkout", async () => {
+  const user = { uid, email: "person@example.test", emailVerified: false,
+    getIdTokenResult: async () => ({ token: "verified.example.token", claims: { email_verified: true } }) };
+  const client = { auth: { currentUser: user }, config } as unknown as AccountClient;
+  assert.equal((await getAccountSession(client))?.user.emailVerified, false);
 });
 
 test("website uses Firebase hosted actions and verified email gating, not URL-authorized password changes", () => {
@@ -177,7 +211,8 @@ test("website uses Firebase hosted actions and verified email gating, not URL-au
   assert.match(hook, /onIdTokenChanged/);
   assert.match(hook, /accountSessionTracker/);
   assert.match(browser, /await reload\(user\)/);
-  assert.match(browser, /getIdToken\(forceRefresh\)/);
+  assert.match(browser, /getIdTokenResult\(true\)/);
+  assert.match(browser, /user.emailVerified && token.claims.email_verified === true/);
   assert.match(account, /onClick=\{resetSignedInPassword\}/);
   assert.match(account, /sendPasswordResetEmail\(client.auth, user.email/);
   assert.match(account, /if \(!account.session\?\.user.emailVerified\) return/);
