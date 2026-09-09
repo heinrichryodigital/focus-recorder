@@ -24,27 +24,42 @@ The animated homepage demonstration is an interactive illustration, not footage 
 
 ## Account-based Pro
 
-New subscriptions use Supabase login, not a Device ID. `/account` provides sign-in,
-email-confirmed signup, password recovery, plan status and local browser sign-out.
-The private backend verifies the Supabase user and PayPal payment before granting
+New subscriptions use Firebase Authentication login, not a Device ID. `/account`
+provides email/password sign-in, verified-email signup, password reset emails,
+plan status and local browser sign-out. The private backend independently verifies
+the Firebase ID token, current user, verified email and PayPal payment before granting
 account-based Pro. Browser profile metadata never grants access. Legacy paid
 activations remain separate; signing up does not transfer their ownership.
 
 Deploy this website together with the account-enabled backend and updated Mac and
 Windows apps. Do not deploy it over the legacy backend as an isolated UI change.
-The current Supabase project must be configured first; an unconfigured account
+The selected Firebase project must be configured first; an unconfigured account
 service leaves signup and checkout unavailable.
 
-Set `SUPABASE_URL` to the selected project URL **at build time as well as runtime**:
-the content-security policy permits authentication connections only to that exact
-origin. The private operator environment also needs `SUPABASE_PUBLISHABLE_KEY` and
-`ACCOUNT_LOGIN_ENABLED=true`. Never use a service-role or secret key in browser
-configuration. Keep actual environment values out of Git.
+The private operator environment needs `FIREBASE_PROJECT_ID`, `FIREBASE_API_KEY`,
+`FIREBASE_AUTH_DOMAIN`, `FIREBASE_APP_ID`, and `ACCOUNT_LOGIN_ENABLED=true`.
+Use the project's **web app configuration**, not an Admin/service-account key.
+The API key is a public Firebase identifier; it does not grant account or Pro access.
+Configuration is returned through the private `/api/account/config` route. The CSP
+permits auth connections only to `identitytoolkit.googleapis.com` and
+`securetoken.googleapis.com`, without wildcard Google hosts. Keep actual operator
+environment values out of Git; the public `.env.example` intentionally stays blank.
 
-Supabase email confirmation and recovery redirects must allow the production
-`/account` page and its approved `next`/`mode` query variants. Email links using
-PKCE must be completed in the browser that requested them. Keep email confirmation
-enabled; production email delivery requires a correctly configured sender.
+Enable Email/Password in Firebase Authentication and add
+`focus-recorder.netlify.app` to Authorized domains. Keep Firebase's default hosted
+email action handler (`https://YOUR-PROJECT.firebaseapp.com/__/auth/action`) for
+verification and password reset. Do not point that handler to `/account`: this
+website sends emails but never applies an email action code or changes passwords
+directly. The approved continue URL is `https://focus-recorder.netlify.app/account`.
+Verification is required before checkout and Pro access; use Refresh account after
+opening the verification link. Password reset emails are available both before and
+after sign-in, and are sent only after an explicit button click.
+
+The website initializes only Firebase Authentication: no Analytics, Firestore,
+Storage, popup sign-in resolver, or Admin SDK. No Firebase service-account private
+key is required for this integration. Browser sessions use local storage when
+available, falling back to session-only or in-memory persistence. Email delivery
+is subject to Firebase quotas and abuse protection; never promise unlimited sends.
 
 Put PayPal test credentials in the ignored `.env.local`, using the blank `.env.example` as a reference. Never populate the public example or prefix credentials with `NEXT_PUBLIC_`. See [payment setup](docs/PAYMENTS.md).
 

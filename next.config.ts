@@ -1,8 +1,8 @@
 import type { NextConfig } from 'next';
 
-// Only the selected public Supabase origin may receive login requests. No wildcard hosts.
-const authOrigin = process.env.SUPABASE_URL;
-const authConnectSource = authOrigin && /^https:\/\/[a-z0-9]{20}\.supabase\.co$/.test(authOrigin) ? ` ${authOrigin}` : '';
+// Password auth uses only these fixed Firebase APIs; email actions run on Firebase's hosted page.
+// No wildcard Google hosts, popups, Analytics, or embedded auth frames are enabled.
+const authConnectSource = ' https://identitytoolkit.googleapis.com https://securetoken.googleapis.com';
 
 const nextConfig: NextConfig = {
   turbopack: {root: process.cwd()},

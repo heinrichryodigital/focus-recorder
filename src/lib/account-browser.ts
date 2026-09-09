@@ -1,27 +1,35 @@
 "use client";
 
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { initializeApp } from "firebase/app";
+import { browserLocalPersistence, browserSessionPersistence, initializeAuth, inMemoryPersistence, reload, type Auth } from "firebase/auth";
 import { checkoutRequest } from "@/app/checkout/checkout-client";
-import { parseAccountConfig } from "./account-contract";
+import { firebaseAccountId, parseAccountConfig, type AccountConfig } from "./account-contract";
 
-let clientPromise: Promise<SupabaseClient | null> | undefined;
+export type AccountClient = { auth: Auth; config: Extract<AccountConfig, { enabled: true }> };
+export type AccountSession = { access_token: string; user: { id: string; email: string | null; emailVerified: boolean } };
+let clientPromise: Promise<AccountClient | null> | undefined;
 
-export function accountClient(): Promise<SupabaseClient | null> {
+export function accountClient(): Promise<AccountClient | null> {
   if (typeof window === "undefined") return Promise.resolve(null);
   if (!clientPromise) clientPromise = checkoutRequest("/api/account/config").then(value => {
     const config = parseAccountConfig(value);
     if (!config.enabled) { clientPromise = undefined; return null; }
-    return createClient(config.supabaseUrl, config.publishableKey, { global: { fetch: (input, init) => {
-      const requestUrl = new URL(typeof input === "string" ? input : input instanceof URL ? input.href : input.url);
-      if (requestUrl.origin !== config.supabaseUrl || !requestUrl.pathname.startsWith("/auth/v1/")) {
-        return Promise.reject(new Error("Unexpected authentication destination."));
-      }
-      return fetch(input, { ...init, redirect: "error", credentials: "omit", cache: "no-store", referrerPolicy: "no-referrer",
-        signal: AbortSignal.any([AbortSignal.timeout(20000), ...(init?.signal ? [init.signal] : [])]) });
-    } }, auth: {
-      flowType: "pkce", autoRefreshToken: true, persistSession: true, detectSessionInUrl: true,
-      storageKey: `focus-recorder-auth-${new URL(config.supabaseUrl).hostname}`,
-    } });
+    // Email/password only: no Analytics, Firestore, popup resolver, or service-account credential.
+    const app = initializeApp(config, `focus-recorder-${config.projectId}`);
+    const auth = initializeAuth(app, { persistence: [browserLocalPersistence, browserSessionPersistence, inMemoryPersistence] });
+    auth.languageCode = "en";
+    return { auth, config };
   }).catch(() => { clientPromise = undefined; return null; });
   return clientPromise;
+}
+
+/** Transport identity only; the private backend independently verifies every paid request. */
+export async function getAccountSession(client: AccountClient, forceRefresh = false): Promise<AccountSession | null> {
+  const user = client.auth.currentUser;
+  if (!user) return null;
+  if (forceRefresh) await reload(user);
+  if (client.auth.currentUser !== user) throw new Error("Your signed-in account changed.");
+  const accessToken = await user.getIdToken(forceRefresh);
+  if (client.auth.currentUser !== user) throw new Error("Your signed-in account changed.");
+  return { access_token: accessToken, user: { id: firebaseAccountId(client.config.projectId, user.uid), email: user.email, emailVerified: user.emailVerified } };
 }

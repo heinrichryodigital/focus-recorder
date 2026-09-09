@@ -1,21 +1,21 @@
 # Release status · September 9, 2026
 
-Version 0.4.1 is a free public preview with a rotated licensing key. Older previews have been withdrawn; upgrade and reactivate with a newly issued license. PayPal checkout is paused pending merchant credential rotation. No account, payment or activation is required for Free recording. Exports are limited to at most 1080p and 24 fps and include a bouncing watermark for the whole video. The app discloses these limits and marks paid controls Pro.
+Version 0.5.0 adds Firebase account login for Pro, without binding new subscriptions to a computer. No account, payment or activation is required for Free recording. Exports are limited to at most 1080p and 24 fps and include a bouncing watermark for the whole video. The app discloses these limits and marks paid controls Pro. Older device-bound purchases retain their legacy activation option; creating a login does not automatically transfer ownership.
 
-| Component | Verified | Remaining limitations |
+| Component | Capabilities and checks | Remaining limitations |
 | --- | --- | --- |
-| Next.js / TypeScript website | Netlify deployment, responsive Apple/Windows marks, Free/Pro comparison, downloads, guide, $9 monthly checkout UI; 23 automated tests | Hosting is subject to the Free allowance |
-| Private PayPal subscriptions | Fixed $9 USD/month plan, durable state, signed webhook verification, refunds/disputes and device-bound short license leases; 76 automated tests and live rejection/storage probes | No real buyer charge was used as an automated test |
-| macOS | Native recording; Free 720p/1080p24; Pro up to 1440p and 60 fps; system audio; 29 tests and packaged signature verification | Apple Development-signed, not Developer ID-signed or notarized |
-| Windows x64 | Native Win32 capture, smooth cursor, autozoom, WebM and optional microphone; Pro up to 1080p30; 33 Windows CI tests with no skips, including capture | Unsigned installer; broader real-device visual/audio/mixed-DPI QA pending; no system audio or MP4 |
+| Next.js / TypeScript website | Firebase email login and hosted email actions, verified-email checkout gating, Free/Pro comparison, Apple/Windows downloads, account race and publication-boundary tests | Netlify and Firebase are subject to their free allowances; no real account/email automation tests |
+| Private PayPal subscriptions | Fixed $9 USD/month plan, independent Firebase user verification, durable state, signed webhook verification, refunds/disputes and short account leases | No real buyer charge was used as an automated test |
+| macOS | Native recording; Free 720p/1080p24; Pro up to 1440p and 60 fps; system audio; Firebase login with Keychain storage, account/expiry/race regression tests | Apple Development-signed, not Developer ID-signed or notarized |
+| Windows x64 | Native Win32 capture, smooth cursor, autozoom, WebM and optional microphone; Pro up to 1080p30; Firebase login with encrypted session storage and account/expiry/race regression tests | Unsigned installer; broader real-device visual/audio/mixed-DPI QA pending; no system audio or MP4 |
 | Source protection | Website public; desktop/payment/issuer source private; server-issued Ed25519 licenses | Binaries can be reverse-engineered; offline leases may remain valid up to three days after a server revocation |
 
-Pro costs $9 USD per month for one device, renewing automatically until cancelled in PayPal. There is no trial or setup fee. Apply the token returned after server verification of payment. Connect at least every three days to renew access. Cancellation retains the verified paid period; refunds and disputes can block further renewals sooner. Try the Free preview on your device before subscribing.
+Pro costs $9 USD per month for your verified account, renewing automatically until cancelled in PayPal. There is no trial or setup fee. Sign into the website and the latest app with the same account; a verified payment unlocks Pro. Connect at least every three days to renew access. Cancellation retains the verified paid period; refunds and disputes can block further renewals sooner. Try the Free preview on your device before subscribing.
 
 The public repository contains checkout UI but not the private backend. `/checkout/demo` remains an isolated no-charge, non-entitling Stripe/PayPal simulation. A browser return or demo receipt never proves payment.
 
-## Published preview
+## Account-enabled preview
 
-[Free macOS and Windows downloads](https://github.com/heinrichryodigital/focus-recorder/releases/tag/v0.4.1-rotated-key-preview) include SHA-256 checksums. The Windows asset comes from private core revision `221f1d841611bc01e2bd723baee340f6ac76d13d`, Windows CI run `34294120008`. Windows output is variable-frame-rate, not guaranteed constant-frame-rate.
+[Free macOS and Windows downloads](https://github.com/heinrichryodigital/focus-recorder/releases/tag/v0.5.0-firebase-preview) use the account-enabled preview. The release page contains publisher checksums and build notes. Windows output is variable-frame-rate, not guaranteed constant-frame-rate.
 
 The current website and payment origin is [focus-recorder.netlify.app](https://focus-recorder.netlify.app). Security warnings may appear for these preview builds; do not disable system security to use them.

@@ -1,31 +1,52 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
-import { accountReturnPath, parseAccountConfig, parseAccountEntitlement, nextRecoveryGrant } from "../src/lib/account-contract";
-import { updateRecoveredPassword } from "../src/lib/account-password";
+import { accountReturnPath, firebaseAccountId, isAccountId, parseAccountConfig, parseAccountEntitlement } from "../src/lib/account-contract";
+import { accountEmailActionSettings } from "../src/lib/account-password";
+import { accountSessionTracker } from "../src/lib/account-session-state";
+import { getAccountSession, type AccountClient, type AccountSession } from "../src/lib/account-browser";
 import { checkoutRequest } from "../src/app/checkout/checkout-client";
+import nextConfig from "../next.config";
 
-const id = "11111111-1111-4111-8111-111111111111";
-const otherId = "22222222-2222-4222-8222-222222222222";
-const config = { enabled: true, supabaseUrl: "https://abcdefghijklmnopqrst.supabase.co", publishableKey: "sb_publishable_" + "x".repeat(32) };
+const projectId = "focus-recorder-test";
+const uid = "TestUserAbC_123";
+const id = `firebase:${projectId}:${uid}`;
+const otherId = `firebase:${projectId}:OtherUser`;
+const config = { enabled: true, provider: "firebase", projectId, apiKey: "AIza" + "x".repeat(35),
+  authDomain: `${projectId}.firebaseapp.com`, appId: "1:123456789:web:" + "a".repeat(20) };
+const session = (accountId = id, token = "example.access.token"): AccountSession => ({
+  access_token: token, user: { id: accountId, email: "person@example.test", emailVerified: true },
+});
 
-test("public account config fails closed and never accepts privileged keys or foreign URLs", () => {
+test("public account config accepts only the exact Firebase web configuration contract", () => {
   assert.deepEqual(parseAccountConfig(config), config);
   assert.deepEqual(parseAccountConfig({ enabled: false }), { enabled: false });
-  const jwt = (role: string) => ["header", Buffer.from(JSON.stringify({ role })).toString("base64url"), "signature"].join(".");
-  assert.equal(parseAccountConfig({ ...config, publishableKey: jwt("anon") }).enabled, true);
-  for (const bad of [null, [], {}, { ...config, enabled: "true" }, { ...config, publishableKey: "sb_secret_" + "x".repeat(32) },
-    { ...config, publishableKey: jwt("service_role") }, { ...config, publishableKey: jwt("authenticated") },
-    ...["http://abcdefghijklmnopqrst.supabase.co", "https://abcdefghijklmnopqrst.supabase.co.evil.test", "https://evil@abcdefghijklmnopqrst.supabase.co", "https://abcdefghijklmnopqrst.supabase.co:444", "https://abcdefghijklmnopqrst.supabase.co/path", "https://abcdefghijklmnopqrst.supabase.co?x=y"].map(supabaseUrl => ({ ...config, supabaseUrl }))]) {
+  for (const bad of [null, [], {}, { ...config, enabled: "true" }, { ...config, provider: "supabase" },
+    ...["abcde", "Avalid-project", "ends-in-", "a".repeat(31), projectId + "\n"].map(projectId => ({ ...config, projectId })),
+    ...["secret", "AIza" + "x".repeat(34), config.apiKey + "\n"].map(apiKey => ({ ...config, apiKey })),
+    ...["https://" + config.authDomain, config.authDomain + ".evil.test", "other-project.firebaseapp.com"].map(authDomain => ({ ...config, authDomain })),
+    ...["1:123:ios:" + "a".repeat(20), "1:123:web:" + "a".repeat(19), config.appId + "\n"].map(appId => ({ ...config, appId }))]) {
     assert.throws(() => parseAccountConfig(bad));
   }
 });
 
-test("UI plan status is account-bound and never treats profile metadata or FR1 as account Pro", () => {
+test("Firebase identity is project-scoped, UID case-sensitive, and bounded", () => {
+  assert.equal(firebaseAccountId(projectId, uid), id);
+  assert.notEqual(firebaseAccountId(projectId, uid.toLowerCase()), id);
+  assert.notEqual(firebaseAccountId("other-project", uid), id);
+  assert.equal(isAccountId(`firebase:${projectId}:${"x".repeat(128)}`), true);
+  for (const invalid of ["", uid + "\n", "x".repeat(129), "other:uid", "ünicode", "contains/slash"]) {
+    assert.throws(() => firebaseAccountId(projectId, invalid));
+  }
+  assert.equal(isAccountId("11111111-1111-4111-8111-111111111111"), false);
+});
+
+test("UI plan status is account-bound and never treats editable metadata or FR1 as account Pro", () => {
   const active = { accountId: id, status: "active", token: ["FR2", "dGVzdA", "c2ln"].join("."), expiresAt: Math.floor(Date.now() / 1000) + 600 };
   assert.deepEqual(parseAccountEntitlement(active, id), { accountId: id, status: "active", expiresAt: active.expiresAt });
   assert.deepEqual(parseAccountEntitlement({ accountId: id, status: "free" }, id), { accountId: id, status: "free" });
-  for (const bad of [{ ...active, accountId: otherId }, { ...active, expiresAt: 1 }, { ...active, expiresAt: Date.now() },
+  for (const bad of [{ ...active, accountId: otherId }, { ...active, accountId: id.toLowerCase() },
+    { ...active, expiresAt: 1 }, { ...active, expiresAt: Date.now() }, { ...active, expiresAt: Date.now() / 1000 + 4 * 86400 },
     { ...active, token: active.token.replace("FR2", "FR1") }, { accountId: id, user_metadata: { plan: "pro" } }]) {
     assert.throws(() => parseAccountEntitlement(bad, id));
   }
@@ -40,6 +61,16 @@ test("login return paths cannot redirect to arbitrary origins or inject URL para
   }
 });
 
+test("Firebase hosted email actions use only the approved continue destinations", () => {
+  for (const origin of ["https://focus-recorder.netlify.app", "http://localhost", "http://localhost:3000"]) {
+    assert.deepEqual(accountEmailActionSettings(origin), { url: `${origin}/account`, handleCodeInApp: false });
+  }
+  for (const origin of ["https://evil.test", "https://focus-recorder.netlify.app.evil.test", "https://user@focus-recorder.netlify.app",
+    "https://focus-recorder.netlify.app/checkout", "https://focus-recorder.netlify.app?mode=reset", "http://localhost.evil.test", "//localhost:3000"]) {
+    assert.throws(() => accountEmailActionSettings(origin));
+  }
+});
+
 test("authenticated checkout sends only consent and a bearer header, not an account or device identifier", async t => {
   const request = t.mock.method(globalThis, "fetch", async () => Response.json({ ok: true }));
   await checkoutRequest("/api/paypal/checkout", { acceptedTerms: true }, undefined, "example.access.token");
@@ -50,43 +81,119 @@ test("authenticated checkout sends only consent and a bearer header, not an acco
   await assert.rejects(checkoutRequest("/api/account/entitlement", undefined, undefined, "bad\nheader"));
 });
 
-test("password recovery verifies a fixed recovery account before sending the password", async () => {
-  const calls: RequestInit[] = [];
-  const transport: typeof fetch = async (_input, init) => { calls.push(init!); return Response.json({ id }); };
-  await updateRecoveredPassword(config, { accountId: id, accessToken: "recovery.token" }, "test-only-password", transport);
-  assert.deepEqual(calls.map(call => call.method), ["GET", "PUT"]);
-  assert.equal(calls[0].body, undefined);
-  assert.deepEqual(JSON.parse(calls[1].body as string), { password: "test-only-password" });
-  for (const call of calls) {
-    assert.equal(new Headers(call.headers).get("Authorization"), "Bearer recovery.token");
-    assert.equal(call.redirect, "error"); assert.equal(call.credentials, "omit");
-  }
-  let requests = 0;
-  const wrongAccount: typeof fetch = async () => { requests++; return Response.json({ id: otherId }); };
-  await assert.rejects(updateRecoveredPassword(config, { accountId: id, accessToken: "recovery.token" }, "test-only-password", wrongAccount));
-  assert.equal(requests, 1, "wrong account must never receive a password update");
+test("same-UID token updates do not reset checkout consent or abort an in-flight request", async () => {
+  let read = async () => session();
+  let previousId: string | undefined;
+  let consent = false;
+  const checkout = new AbortController();
+  let checkoutStarted = false;
+  const updates: Array<{ session: AccountSession | null; loading: boolean }> = [];
+  const tracker = accountSessionTracker(() => read(), (next, loading) => {
+    if (previousId !== next?.user.id) { consent = false; if (checkoutStarted) checkout.abort(); }
+    previousId = next?.user.id;
+    updates.push({ session: next, loading });
+  });
+  await tracker.changed(id);
+  consent = true; checkoutStarted = true;
+  let resolve!: (value: AccountSession) => void;
+  read = () => new Promise(value => { resolve = value; });
+  const refreshing = tracker.changed(id);
+  assert.equal(updates.at(-1)?.session?.user.id, id);
+  assert.equal(updates.at(-1)?.loading, true);
+  assert.equal(consent, true); assert.equal(checkout.signal.aborted, false);
+  resolve(session(id, "rotated.access.token"));
+  await refreshing;
+  assert.equal(updates.at(-1)?.session?.access_token, "rotated.access.token");
+  assert.equal(consent, true); assert.equal(checkout.signal.aborted, false);
+  const switching = tracker.changed(otherId);
+  assert.equal(updates.at(-1)?.session, null);
+  assert.equal(consent, false); assert.equal(checkout.signal.aborted, true);
+  resolve(session(otherId));
+  await switching;
+  tracker.dispose();
 });
 
-test("auth events, not URL reset flags or stale session snapshots, authorize recovery UI", () => {
+test("logout, newer identity events and disposal fence out stale session work", async () => {
+  let resolve!: (value: AccountSession | null) => void;
+  const updates: Array<AccountSession | null> = [];
+  const tracker = accountSessionTracker(() => new Promise(value => { resolve = value; }), next => updates.push(next));
+  const old = tracker.changed(id);
+  const resolveOld = resolve;
+  await tracker.changed(null);
+  resolveOld(session());
+  await old;
+  assert.equal(updates.at(-1), null);
+  const pending = tracker.changed(id);
+  const prior = resolve;
+  const newest = tracker.changed(otherId);
+  resolve(session(otherId));
+  await newest;
+  prior(session());
+  await pending;
+  assert.equal(updates.at(-1)?.user.id, otherId);
+  const disposed = tracker.changed(otherId);
+  const count = updates.length;
+  tracker.dispose(); resolve(session(otherId));
+  await disposed;
+  assert.equal(updates.length, count);
+});
+
+test("failed or mismatched session refreshes fail closed", async () => {
+  let read = async (): Promise<AccountSession | null> => session();
+  const updates: Array<AccountSession | null> = [];
+  const tracker = accountSessionTracker(() => read(), next => updates.push(next));
+  await tracker.changed(id);
+  read = async () => session(otherId);
+  await tracker.changed(id);
+  assert.equal(updates.at(-1), null);
+  read = async () => { throw new Error("synthetic offline failure"); };
+  await tracker.changed(id);
+  assert.equal(updates.at(-1), null);
+});
+
+test("session snapshots use the same current Firebase user before and after token lookup", async () => {
+  let finish!: (token: string) => void;
+  const user = { uid, email: "person@example.test", emailVerified: true,
+    getIdToken: async () => new Promise<string>(resolve => { finish = resolve; }) };
+  const auth = { currentUser: user as typeof user | null };
+  const client = { auth, config } as unknown as AccountClient;
+  const snapshot = getAccountSession(client);
+  auth.currentUser = { ...user, uid: "OtherUser" };
+  finish("example.access.token");
+  await assert.rejects(snapshot, /account changed/);
+  auth.currentUser = user;
+  const valid = getAccountSession(client);
+  finish("example.access.token");
+  assert.deepEqual(await valid, session());
+  auth.currentUser = null;
+  assert.equal(await getAccountSession(client), null);
+});
+
+test("website uses Firebase hosted actions and verified email gating, not URL-authorized password changes", () => {
   const hook = readFileSync(new URL("../src/lib/use-account.ts", import.meta.url), "utf8");
   const account = readFileSync(new URL("../src/app/account/account.tsx", import.meta.url), "utf8");
-  assert.match(hook, /event === "PASSWORD_RECOVERY"/);
-  assert.doesNotMatch(hook, /await auth\.auth\.getSession\(/);
-  assert.match(account, /account\.recovery\.accountId === account\.session\?\.user\.id/);
-  assert.doesNotMatch(account, /const passwordUpdate = \(reset/);
+  const browser = readFileSync(new URL("../src/lib/account-browser.ts", import.meta.url), "utf8");
   const checkout = readFileSync(new URL("../src/app/checkout/checkout.tsx", import.meta.url), "utf8");
+  assert.match(hook, /onIdTokenChanged/);
+  assert.match(hook, /accountSessionTracker/);
+  assert.match(browser, /await reload\(user\)/);
+  assert.match(browser, /getIdToken\(forceRefresh\)/);
+  assert.match(account, /onClick=\{resetSignedInPassword\}/);
+  assert.match(account, /sendPasswordResetEmail\(client.auth, user.email/);
+  assert.match(account, /if \(!account.session\?\.user.emailVerified\) return/);
+  assert.doesNotMatch(account, /confirmPasswordReset|applyActionCode|updatePassword|updateRecoveredPassword/);
+  assert.doesNotMatch(browser, /getAnalytics|getFirestore|getStorage|browserPopupRedirectResolver/);
+  assert.match(checkout, /!account.session\?\.user.emailVerified/);
+  assert.match(checkout, /session.user.id !== account.session.user.id/);
   assert.doesNotMatch(checkout, /machineId|name="platform"|id="device-id"/);
   assert.match(checkout, /useState\(false\)/);
 });
 
-test("password recovery survives tab focus but not logout or a new account/session", () => {
-  const session = { user: { id }, access_token: "original.token" };
-  const grant = nextRecoveryGrant(null, "PASSWORD_RECOVERY", session);
-  assert.deepEqual(grant, { accountId: id, accessToken: "original.token" });
-  assert.deepEqual(nextRecoveryGrant(grant, "SIGNED_IN", session), grant);
-  assert.equal(nextRecoveryGrant(grant, "SIGNED_IN", { ...session, access_token: "different.login" }), null);
-  assert.equal(nextRecoveryGrant(grant, "SIGNED_IN", { user: { id: otherId }, access_token: session.access_token }), null);
-  assert.equal(nextRecoveryGrant(grant, "SIGNED_OUT", null), null);
-  assert.equal(nextRecoveryGrant(null, "INITIAL_SESSION", session), null);
-  assert.deepEqual(nextRecoveryGrant(grant, "TOKEN_REFRESHED", { ...session, access_token: "refreshed.token" }), { accountId: id, accessToken: "refreshed.token" });
+test("CSP allows only the two fixed Firebase authentication API hosts", async () => {
+  const routes = await nextConfig.headers!();
+  const csp = routes[0].headers.find(header => header.key === "Content-Security-Policy")!.value;
+  const connect = csp.split(";").map(part => part.trim()).find(part => part.startsWith("connect-src"))!;
+  assert.equal(connect, "connect-src 'self' https://identitytoolkit.googleapis.com https://securetoken.googleapis.com");
+  assert.doesNotMatch(connect, /\*|supabase|firebaseio|analytics/);
+  assert.match(csp, /frame-ancestors 'none'/);
 });

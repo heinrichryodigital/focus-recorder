@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { ArrowUpRight, UserRound } from "lucide-react";
 import { useAccount } from "@/lib/use-account";
+import { getAccountSession } from "@/lib/account-browser";
 import CheckoutFrame from "./checkout-frame";
 import { checkoutRequest, parseCheckoutConfig, parseCheckoutRedirect, type CheckoutConfig } from "./checkout-client";
 
@@ -39,17 +40,17 @@ export default function Checkout({ cancelled }: { cancelled: boolean }) {
   const available = config?.enabled && account.client;
   async function subscribe(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (submission.current || !available || loading || !account.session || !config) return;
+    if (submission.current || !available || loading || !account.session?.user.emailVerified || !config) return;
     setError("");
     if (!termsAccepted) { setError("Read and accept the monthly subscription terms to continue."); return; }
     const controller = new AbortController();
     submission.current = controller;
     setSubmitting(true);
     try {
-      const { data, error: sessionError } = await account.client!.auth.getSession();
-      if (sessionError || !data.session || data.session.user.id !== account.session.user.id) throw new Error();
+      const session = await getAccountSession(account.client!);
+      if (!session?.user.emailVerified || session.user.id !== account.session.user.id) throw new Error();
       if (controller.signal.aborted) return;
-      const value = await checkoutRequest("/api/paypal/checkout", { acceptedTerms: true }, controller.signal, data.session.access_token);
+      const value = await checkoutRequest("/api/paypal/checkout", { acceptedTerms: true }, controller.signal, session.access_token);
       const approvalUrl = parseCheckoutRedirect(value, config.environment);
       if (!controller.signal.aborted) window.location.assign(approvalUrl);
     } catch {
@@ -74,9 +75,10 @@ export default function Checkout({ cancelled }: { cancelled: boolean }) {
     </div> : <form onSubmit={subscribe} aria-busy={submitting}>
       {account.session && <div className="checkout-account"><span className="checkout-eyebrow">YOUR ACCOUNT</span><p className="account-email">{account.session.user.email}</p><Link href="/account">Manage account and plan</Link><p className="checkout-help">No Device ID or activation code required. Sign into the app with this account after payment is verified.</p></div>}
       <div className="checkout-terms" id="subscription-terms"><h3>Before you subscribe</h3><p>$9 USD is charged when you subscribe, then automatically every month until you cancel in PayPal. There is no free trial.</p><p>Cancellation keeps Pro available through the current paid period. Refunds or payment disputes can revoke access earlier.</p><p>Sign into the app and connect to the internet at least every three days to refresh Pro while your subscription is paid. Otherwise, the app returns to Free until it can verify access.</p></div>
-      <label className="checkout-consent"><input type="checkbox" checked={termsAccepted} disabled={submitting || loading || !available || !account.session} onChange={event => setTermsAccepted(event.target.checked)} /><span>I agree to the $9 USD monthly automatic renewal and the subscription terms above. <Link href="/privacy">Privacy details</Link>.</span></label>
+      {account.session && !account.session.user.emailVerified && <p className="checkout-info" role="status">Verify your email before starting a subscription. <Link href="/account?next=%2Fcheckout">Open your account to resend the email or refresh verification.</Link></p>}
+      <label className="checkout-consent"><input type="checkbox" checked={termsAccepted} disabled={submitting || loading || !available || !account.session?.user.emailVerified} onChange={event => setTermsAccepted(event.target.checked)} /><span>I agree to the $9 USD monthly automatic renewal and the subscription terms above. <Link href="/privacy">Privacy details</Link>.</span></label>
       {error && <p className="checkout-error" role="alert">{error}</p>}
-      <button className="checkout-primary" type="submit" disabled={submitting || loading || !available || !account.session || !termsAccepted}>{submitting ? "Opening PayPal…" : config?.environment === "sandbox" ? "Continue to PayPal sandbox" : "Subscribe with PayPal"}<ArrowUpRight size={18} aria-hidden="true" /></button>
+      <button className="checkout-primary" type="submit" disabled={submitting || loading || !available || !account.session?.user.emailVerified || !termsAccepted}>{submitting ? "Opening PayPal…" : config?.environment === "sandbox" ? "Continue to PayPal sandbox" : "Subscribe with PayPal"}<ArrowUpRight size={18} aria-hidden="true" /></button>
       <p className="checkout-fineprint">You review and approve the subscription on PayPal. We never ask for your card details or PayPal password.</p>
     </form>}
   </CheckoutFrame>;

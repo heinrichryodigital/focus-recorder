@@ -6,10 +6,23 @@ const allowedDirs = ['src/', 'public/', 'docs/', 'scripts/', 'tests/', '.github/
 const forbidden = /(?:^|\/)(?:Sources|windows|licensing|node_modules|\.next|\.vercel|graphify-out)(?:\/|$)|\.(?:pem|key|p12|pfx|license|frlicense|mov|mp4|zip|exe|dmg|msi|swift)$/i;
 const secrets = [/-----BEGIN (?:RSA |EC |OPENSSH |ENCRYPTED |)PRIVATE KEY-----/, /\b(?:(?:sk|rk)_(?:live|test)|whsec)_[A-Za-z0-9]{16,}\b/, /\bgh[pousr]_[A-Za-z0-9]{30,}\b/, /\bgithub_pat_[A-Za-z0-9_]{40,}\b/];
 secrets.push(/\bsb_secret_[A-Za-z0-9_-]{16,}\b/);
+// Firebase web API keys are public configuration. Google OAuth credentials and
+// service-account exports are not, and must never enter the website repository.
+secrets.push(/\bya29\.[A-Za-z0-9._-]{20,}/, /\b1\/\/[A-Za-z0-9_-]{20,}/,
+  /["']type["']\s*:\s*["']service_account["']/);
 function containsPrivilegedSupabaseJWT(contents) {
   return [...contents.matchAll(/\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b/g)].some(([token]) => {
     try { return JSON.parse(Buffer.from(token.split('.')[1], 'base64url').toString('utf8')).role === 'service_role'; }
     catch { return false; }
+  });
+}
+function containsFirebaseCredentialJWT(contents) {
+  return [...contents.matchAll(/\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b/g)].some(([token]) => {
+    try {
+      const claims = JSON.parse(Buffer.from(token.split('.')[1], 'base64url').toString('utf8'));
+      return typeof claims.iss === 'string' && (claims.iss.startsWith('https://securetoken.google.com/')
+        || claims.iss.endsWith('.iam.gserviceaccount.com'));
+    } catch { return false; }
   });
 }
 // This template is the only environment file allowed into the public repository.
@@ -23,8 +36,10 @@ const exampleSettings = new Map([
   ['PAYPAL_WEBHOOK_ID', ''],
   ['APP_URL', 'http://localhost:3000'],
   ['ACCOUNT_LOGIN_ENABLED', 'false'],
-  ['SUPABASE_URL', ''],
-  ['SUPABASE_PUBLISHABLE_KEY', ''],
+  ['FIREBASE_PROJECT_ID', ''],
+  ['FIREBASE_API_KEY', ''],
+  ['FIREBASE_AUTH_DOMAIN', ''],
+  ['FIREBASE_APP_ID', ''],
 ]);
 function validateEnvironmentExample(contents) {
   const issues = [];
@@ -77,7 +92,9 @@ for (const entry of entries) {
     continue;
   }
   const bytes = execFileSync('git', ['cat-file', 'blob', objectId], { maxBuffer: 1_000_001 });
-  if (secrets.some(pattern => pattern.test(bytes.toString('utf8'))) || containsPrivilegedSupabaseJWT(bytes.toString('utf8'))) errors.push(`Possible credential: ${file}`);
+  const contents = bytes.toString('utf8');
+  if (secrets.some(pattern => pattern.test(contents)) || containsPrivilegedSupabaseJWT(contents)
+    || containsFirebaseCredentialJWT(contents)) errors.push(`Possible credential: ${file}`);
   if (file === '.env.example') errors.push(...validateEnvironmentExample(bytes.toString('utf8')));
 }
 if (errors.length) { console.error(errors.join('\n')); process.exit(1); }

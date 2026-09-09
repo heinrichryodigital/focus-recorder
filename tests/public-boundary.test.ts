@@ -15,8 +15,10 @@ const safeEnvironmentExample = [
   'PAYPAL_WEBHOOK_ID=',
   'APP_URL=http://localhost:3000',
   'ACCOUNT_LOGIN_ENABLED=false',
-  'SUPABASE_URL=',
-  'SUPABASE_PUBLISHABLE_KEY=',
+  'FIREBASE_PROJECT_ID=',
+  'FIREBASE_API_KEY=',
+  'FIREBASE_AUTH_DOMAIN=',
+  'FIREBASE_APP_ID=',
   '',
 ].join('\n');
 
@@ -71,6 +73,36 @@ test('publication guard rejects legacy privileged Supabase JWTs but permits publ
     const result = inspect(root);
     assert.equal(result.status, role === 'anon' ? 0 : 1);
     assert.equal(result.stderr.includes(token), false);
+  });
+});
+
+test('publication guard rejects Google OAuth, service-account and Firebase session credentials without printing them', () => {
+  const firebaseToken = [Buffer.from(JSON.stringify({ alg: 'RS256' })).toString('base64url'),
+    Buffer.from(JSON.stringify({ iss: ['https://securetoken.google.com', 'synthetic-project'].join('/'), sub: 'example-user' })).toString('base64url'),
+    'syntheticSignature'].join('.');
+  for (const credential of [
+    ['ya29', 'x'.repeat(40)].join('.'), ['1', 'x'.repeat(40)].join('//'), firebaseToken,
+    JSON.stringify({ type: ['service', 'account'].join('_'), project_id: 'synthetic-project' }),
+  ]) repository(root => {
+    stage(root, 'src/config.ts', credential);
+    const result = inspect(root);
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /Possible credential/);
+    assert.equal(result.stderr.includes(credential), false);
+  });
+});
+
+test('publication guard permits public Firebase web API keys but requires blank env examples', () => {
+  const publicKey = 'AIza' + 'x'.repeat(35);
+  repository(root => {
+    stage(root, 'src/config.ts', `export const publicKey = "${publicKey}";`);
+    assert.equal(inspect(root).status, 0);
+  });
+  repository(root => {
+    stage(root, '.env.example', safeEnvironmentExample.replace('FIREBASE_API_KEY=', `FIREBASE_API_KEY=${publicKey}`));
+    const result = inspect(root);
+    assert.equal(result.status, 1);
+    assert.equal(result.stderr.includes(publicKey), false);
   });
 });
 

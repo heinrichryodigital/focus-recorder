@@ -1,14 +1,16 @@
 # Payments
 
-Production `/checkout` offers Focus Pro for **$9 USD per month, one device**, automatically renewing until cancelled in PayPal. No trial or setup fee. The form requires a Device ID and explicit recurring-payment consent, then redirects to PayPal's hosted subscription approval. Card or PayPal credentials are never collected by this website.
+Production `/checkout` offers Focus Pro for **$9 USD per month, linked to your account**, automatically renewing until cancelled in PayPal. No trial or setup fee. Sign in with a verified Firebase email account and give explicit recurring-payment consent, then review approval on PayPal's hosted page. No Device ID is requested. Card or PayPal credentials are never collected by this website.
 
-The private backend checks the fixed provider plan and completed payment, stores subscription state durably and issues a signed, device-bound license lasting at most three days. Clients renew within the verified paid period. Browser returns alone cannot grant access. Refund, reversal and dispute events can block further leases; an already-issued offline license can remain usable until expiry.
+The private backend independently verifies the Firebase ID token and current user, checks the fixed provider plan and completed payment, stores subscription state durably and issues a signed, account-bound lease lasting at most three days. Clients renew within the verified paid period. Account identity is project-scoped and case-sensitive, and cannot be assigned from a browser-supplied email or profile field. Browser returns alone cannot grant access. Refund, reversal and dispute events can block further leases; an already-issued offline lease can remain usable until expiry. Existing device-bound purchases stay on their legacy activation path and are not automatically transferred to a login.
 
 Availability comes from the server and defaults to disabled when configuration is missing. This public repository contains only the UI: setting credentials in a clone does not provide the private backend.
 
 ## Configuration and webhook
 
 Production secrets are in Netlify's production environment, never in public Git, client bundles or `NEXT_PUBLIC_` variables. The operator's protected environment file and setup instructions live outside this repository. They include the live client ID/secret, webhook ID, fixed plan ID, session secret and signing key. Environment changes require a redeploy.
+
+Firebase uses the four web app settings listed in `.env.example`, with account login enabled only for the coordinated website/backend/native-app rollout. Do not add a Firebase Admin or service-account private key. Firebase's default hosted email action handler completes verification and password resets; the website only sends explicitly requested emails with the approved `/account` continue URL. See the [account setup](../README.md#account-based-pro).
 
 Webhook URL: `https://focus-recorder.netlify.app/api/paypal/webhook`.
 
