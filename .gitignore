@@ -4,6 +4,7 @@ node_modules/
 out/
 dist/
 output/
+.playwright-cli/
 .env*
 !.env.example
 *.pem
